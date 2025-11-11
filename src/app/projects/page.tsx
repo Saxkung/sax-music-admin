@@ -236,7 +236,7 @@ export default function ProjectsPage() {
     dragOverItem.current = id;
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (e: DragEvent<HTMLTableRowElement>) => {
     if (!dragItem.current || !dragOverItem.current || dragItem.current === dragOverItem.current) {
       dragItem.current = null;
       dragOverItem.current = null;
@@ -407,6 +407,8 @@ export default function ProjectsPage() {
                       onClick={() =>
                         togglePublished(project.id, project.is_published)
                       }
+                    
+                      title={project.is_published ? 'Unpublish Project' : 'Publish Project'}
                     >
                       {project.is_published ? <Eye /> : <EyeOff />}
                     </Button>

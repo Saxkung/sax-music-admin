@@ -272,6 +272,8 @@ export default function CategoriesPage() {
                     onClick={() =>
                       toggleVisibility(category.id, category.is_visible)
                     }
+                   
+                    title={category.is_visible ? 'Hide Category' : 'Show Category'}
                   >
                     {category.is_visible ? <Eye /> : <EyeOff />}
                   </Button>

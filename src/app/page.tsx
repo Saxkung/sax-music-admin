@@ -128,11 +128,16 @@ export default function ProjectsDashboard() {
                     </div>
                     
                     <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-                      {project.is_published ? (
-                         <Eye className="h-4 w-4 text-green-500" title="Published" />
-                      ) : (
-                         <EyeOff className="h-4 w-4 text-muted-foreground" title="Not Published" />
-                      )}
+                      <div 
+                        className="h-4 w-4 flex items-center justify-center" 
+                        title={project.is_published ? 'Published' : 'Not Published'}
+                      >
+                        {project.is_published ? (
+                           <Eye className="h-4 w-4 text-green-500" />
+                        ) : (
+                           <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
                       <Button 
                         variant="outline" 
                         size="icon-sm" 
