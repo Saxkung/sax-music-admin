@@ -1,84 +1,147 @@
-// src/app/api/admin-proxy/[...path]/route.ts
-
+/* sax-music-admin/src/app/api/admin-proxy/[...path]/route.ts - PRODUCTION READY */
 import { NextRequest, NextResponse } from 'next/server';
 
-// อ่านค่าจาก .env.local (Server Side Only)
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'S0809510733S@x'; // 🔧 Hardcode ชั่วคราว
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sax-music-api.skmyti00.workers.dev'; // 🔧 Hardcode ชั่วคราว
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// นี่คือฟังก์ชัน Proxy หลัก
+// ตรวจสอบ Environment Variables ตั้งแต่ต้น
+if (!ADMIN_TOKEN || !API_URL) {
+  console.error('❌ CRITICAL: Missing required environment variables');
+  console.error('Required: ADMIN_TOKEN, NEXT_PUBLIC_API_URL');
+}
+
 async function handler(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  // 🔍 Debug: ดูว่าอ่าน env ได้หรือไม่
-  console.log('🔐 Proxy Debug:', {
-    hasToken: !!ADMIN_TOKEN,
-    hasApiUrl: !!API_URL,
-    tokenValue: ADMIN_TOKEN ? '***' + ADMIN_TOKEN.slice(-4) : 'MISSING'
-  });
-
+  // 1. ตรวจสอบ Environment Variables
   if (!API_URL || !ADMIN_TOKEN) {
+    console.error('❌ Missing environment variables');
     return NextResponse.json(
-      { error: 'API URL หรือ Admin Token ไม่ได้ตั้งค่าใน Environment (Admin Project)' },
+      { error: 'Server configuration error' },
       { status: 500 }
     );
   }
 
-  // 🔑 Await params ก่อนใช้ (Next.js 15+)
   const resolvedParams = await params;
-  
-  // 1. สร้าง URL ปลายทาง (ไปยัง Worker จริง)
   const apiPath = resolvedParams.path.join('/');
-  const destinationURL = `${API_URL}/api/admin/${apiPath}`;
   
-  console.log('📡 Proxying to:', destinationURL);
-
-  // 2. สร้าง Headers ใหม่ (ไม่ copy จาก req.headers)
-  const headers: HeadersInit = {
-    'Authorization': `Bearer ${ADMIN_TOKEN}`,
-    'Content-Type': 'application/json',
-  };
-  
-  // 🔍 Debug: ดู header ที่จะส่งไป
-  console.log('📤 Sending Authorization:', `Bearer ${ADMIN_TOKEN}`);
-
-  // 3. อ่าน body ถ้ามี
-  let body: string | undefined = undefined;
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    try {
-      body = await req.text();
-    } catch (e) {
-      console.error('Error reading body:', e);
-    }
+  // 2. Validate Path - ป้องกัน Path Traversal
+  if (apiPath.includes('..') || apiPath.includes('//')) {
+    console.error('❌ Invalid path detected:', apiPath);
+    return NextResponse.json(
+      { error: 'Invalid request path' },
+      { status: 400 }
+    );
   }
 
-  // 4. ยิง Request ไปยัง Worker จริง
-  try {
-    const res = await fetch(destinationURL, {
-      method: req.method,
-      headers: headers,
-      body: body,
-    });
-    
-    console.log('📥 Worker response status:', res.status);
-    
-    const data = await res.json().catch(() => ({}));
+  const destinationURL = `${API_URL}/api/admin/${apiPath}`;
 
-    // 5. คืน Response ที่ได้จาก Worker กลับไปยัง Frontend
+  // 3. Validate Destination URL
+  try {
+    const url = new URL(destinationURL);
+    if (url.protocol !== 'https:') {
+      console.error('❌ Non-HTTPS URL rejected:', destinationURL);
+      return NextResponse.json(
+        { error: 'Invalid request' },
+        { status: 400 }
+      );
+    }
+  } catch (e) {
+    console.error('❌ Invalid URL:', destinationURL);
+    return NextResponse.json(
+      { error: 'Invalid request' },
+      { status: 400 }
+    );
+  }
+
+  console.log(`📡 Proxying [${req.method}] to admin endpoint`);
+
+  try {
+    // 4. สร้าง Headers สำหรับ Worker
+    const forwardHeaders = new Headers();
+    forwardHeaders.set('Authorization', `Bearer ${ADMIN_TOKEN}`);
+    
+    // Forward Content-Type ถ้ามี (สำคัญสำหรับ JSON และ FormData)
+    const contentType = req.headers.get('content-type');
+    if (contentType) {
+      forwardHeaders.set('Content-Type', contentType);
+    }
+
+    let body: BodyInit | null = null;
+    
+    // 5. อ่าน Body สำหรับ POST/PUT/PATCH
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'DELETE') {
+      const rawRequest = new Request(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: req.body,
+        // @ts-ignore
+        duplex: 'half'
+      });
+      
+      body = rawRequest.body;
+    }
+
+    // 6. ส่ง Request ไปยัง Worker
+    const fetchOptions: RequestInit = {
+      method: req.method,
+      headers: forwardHeaders,
+      body: body,
+      cache: 'no-store',
+      // @ts-ignore
+      duplex: 'half'
+    };
+
+    const res = await fetch(destinationURL, fetchOptions);
+
+    // 7. Handle 204 No Content
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+      return NextResponse.json({ success: true }, { status: res.status });
+    }
+
+    // 8. Parse Response
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      console.error('❌ Failed to parse JSON response');
+      
+      return NextResponse.json(
+        { 
+          error: 'Invalid response from server',
+          status: res.status
+        },
+        { status: 502 }
+      );
+    }
+
+    // 9. Return Response
+    if (!res.ok) {
+      console.error('❌ Worker returned error status:', res.status);
+      return NextResponse.json(data, { status: res.status });
+    }
+
     return NextResponse.json(data, { status: res.status });
 
   } catch (e: any) {
     console.error('❌ Proxy Error:', e.message);
-    return NextResponse.json({ 
-      error: 'Proxy Error: Worker is unreachable or misconfigured',
-      details: e.message 
-    }, { status: 502 });
+    
+    return NextResponse.json(
+      { 
+        error: 'Service temporarily unavailable',
+        // ไม่เปิดเผย details ใน production เว้นแต่เป็น development
+        ...(process.env.NODE_ENV === 'development' && { 
+          details: e.message 
+        })
+      },
+      { status: 502 }
+    );
   }
 }
 
-// Next.js Route Handler จะใช้ฟังก์ชันเดียวสำหรับทุก Method
 export const GET = handler;
 export const POST = handler;
 export const PUT = handler;
 export const DELETE = handler;
+export const PATCH = handler;

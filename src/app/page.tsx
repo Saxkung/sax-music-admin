@@ -1,38 +1,34 @@
-// src/app/page.tsx
-'use client'; 
+'use client';
 
-import { useEffect, useState, useCallback } from 'react'; // ⬅️ เพิ่ม useCallback
-import { useRouter } from 'next/navigation'; // ⬅️ เพิ่ม useRouter
-import { adminFetch } from '@/lib/adminFetcher'; 
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { adminFetch } from '@/lib/adminFetcher';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, PlusCircle, Pencil, Trash2 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // สมมติว่ามี component Alert
+import { Loader2, PlusCircle, Pencil, Trash2, LogOut } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Type ที่ถูกต้องสำหรับข้อมูลจาก Worker
 interface ProjectAdminData {
   id: string;
   title: string;
   description: string;
   image: string;
   category_id: string;
-  categoryName: string; // มาจากการ Join ใน Worker
-  trackCount: number;    // มาจากการนับใน Worker
+  categoryName: string;
+  trackCount: number;
 }
 
 export default function ProjectsDashboard() {
-  const router = useRouter(); // ⬅️ เรียกใช้ Next.js Router
+  const router = useRouter();
   const [data, setData] = useState<ProjectAdminData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  // 1. Refactor Logic การดึงข้อมูลให้ออกมาเป็น Function ที่เรียกซ้ำได้
   const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
-      // Endpoint: /api/admin-proxy/projects
-      const projects: ProjectAdminData[] = await adminFetch('/projects'); //
-      
+      const projects: ProjectAdminData[] = await adminFetch('/projects');
       setData(projects);
       setError(null);
     } catch (e: any) {
@@ -48,21 +44,31 @@ export default function ProjectsDashboard() {
     fetchProjects();
   }, [fetchProjects]);
 
-  // 2. Logic การลบ Project
+  const handleLogout = async () => {
+    if (!confirm('Are you sure you want to logout?')) return;
+    
+    setLoggingOut(true);
+    try {
+      // เรียก API logout
+      await fetch('/api/auth/signout', {
+        method: 'POST',
+      });
+      router.push('/login');
+      router.refresh();
+    } catch (e) {
+      console.error('Logout error:', e);
+      setLoggingOut(false);
+    }
+  };
+
   const handleDeleteProject = async (id: string, title: string) => {
     if (!window.confirm(`Are you sure you want to delete project: "${title}"? This action cannot be undone.`)) {
       return;
     }
 
     try {
-      // เรียก API DELETE /api/admin/project/:id
-      await adminFetch(`/project/${id}`, { 
-        method: 'DELETE',
-      });
-      
-      alert(`Project "${title}" deleted successfully!`); // ควรเปลี่ยนเป็น Toast/Notification ที่ดีกว่า
-      
-      // อัปเดตตารางโดยการเรียกข้อมูลใหม่
+      await adminFetch(`/project/${id}`, { method: 'DELETE' });
+      alert(`Project "${title}" deleted successfully!`);
       fetchProjects();
     } catch (e: any) {
       console.error('Failed to delete project:', e);
@@ -70,25 +76,40 @@ export default function ProjectsDashboard() {
     }
   };
 
-  // 3. Logic การนำทางไปยังหน้า Create
   const handleCreateProject = () => {
-    router.push('/projects/create'); // ⬅️ ต้องสร้างไฟล์ src/app/projects/create/page.tsx
+    router.push('/projects/create');
   };
 
-  // 4. Logic การนำทางไปยังหน้า Edit
   const handleEditProject = (id: string) => {
-    router.push(`/projects/${id}/edit`); // ⬅️ ต้องสร้างไฟล์ src/app/projects/[id]/edit/page.tsx
+    router.push(`/projects/${id}/edit`);
   };
 
-  // 5. แสดงผล
   return (
     <main className="container max-w-7xl mx-auto py-10 px-4">
+      {/* Header with Logout */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Admin Dashboard: Projects</h1>
-        <Button onClick={handleCreateProject}> 
-          <PlusCircle className="h-4 w-4 mr-2" />
-          Add New Project
-        </Button>
+        <div>
+          <h1 className="text-3xl font-bold">Admin Dashboard: Projects</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage your music projects</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleCreateProject}> 
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add New Project
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleLogout}
+            disabled={loggingOut}
+          >
+            {loggingOut ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4 mr-2" />
+            )}
+            Logout
+          </Button>
+        </div>
       </div>
 
       {loading && (
@@ -105,9 +126,9 @@ export default function ProjectsDashboard() {
       )}
 
       {!loading && !error && data.length === 0 && (
-          <div className="text-center p-8 border rounded-lg">
-              <p className="text-lg text-muted-foreground">No projects found. Click "Add New Project" to get started.</p>
-          </div>
+        <div className="text-center p-8 border rounded-lg">
+          <p className="text-lg text-muted-foreground">No projects found. Click "Add New Project" to get started.</p>
+        </div>
       )}
 
       {!loading && !error && data.length > 0 && (
@@ -130,23 +151,21 @@ export default function ProjectsDashboard() {
                   <TableCell>{project.categoryName}</TableCell>
                   <TableCell className="text-center">{project.trackCount}</TableCell>
                   <TableCell className="text-center space-x-2">
-                    {/* ปุ่ม Edit: เรียก handler ที่นำทาง */}
                     <Button 
                       variant="outline" 
                       size="icon" 
                       title="Edit"
                       onClick={() => handleEditProject(project.id)}
                     >
-                        <Pencil className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
-                    {/* ปุ่ม Delete: เรียก handler ที่ลบข้อมูล */}
                     <Button 
                       variant="destructive" 
                       size="icon" 
                       title="Delete"
                       onClick={() => handleDeleteProject(project.id, project.title)}
                     >
-                        <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
