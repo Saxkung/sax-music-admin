@@ -5,7 +5,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link"; 
-import { usePathname } from "next/navigation"; // ⭐️ 2. Import 'usePathname'
+import { usePathname } from "next/navigation"; 
+import { signOut } from "next-auth/react";
 
 // ⭐️ 3. ลบ 'cookies', 'headers', 'redirect', 'use' ออกจาก imports
 
@@ -53,7 +54,8 @@ function AdminNavbar() {
             </Link>
             <form action="/api/auth/logout" method="POST">
               <button 
-                onClick={async () => {
+                onClick={async (e) => {
+                  e.preventDefault(); 
                   await signOut({ redirect: true, redirectTo: '/login' });
                 }}
                 className="hover:text-destructive transition-colors"
@@ -80,8 +82,8 @@ export default function RootLayout({
   const isLoginPage = pathname === '/login';
 
   return (
-    <html lang="en" className="dark"> {/* ⭐️ เพิ่ม dark */}
-      {/* ⭐️ 6. (Optional) ถ้าต้องการ Title คืนมา ให้ใส่ <head> ที่นี่ */}
+    <html lang="en" className="dark"> 
+      
       <head>
         <title>Admin Panel - SAX MUSIC</title>
         <meta name="description" content="Admin management system" />

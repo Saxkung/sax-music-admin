@@ -1,3 +1,4 @@
+/* sax-music-admin/src/app/page.tsx (แก้ไข) */
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -7,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Loader2, PlusCircle, Pencil, Trash2, LogOut } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { signOut } from '@/auth';
+import { signOut } from 'next-auth/react';
 
 interface ProjectAdminData {
   id: string;
@@ -72,12 +73,14 @@ export default function ProjectsDashboard() {
     }
   };
 
+  // ⭐️ 1. (แก้ไข) เปลี่ยน router.push
   const handleCreateProject = () => {
-    router.push('/projects/create');
+    router.push('/projects');
   };
 
+  // ⭐️ 2. (แก้ไข) เปลี่ยน router.push
   const handleEditProject = (id: string) => {
-    router.push(`/projects/${id}/edit`);
+    router.push('/projects');
   };
 
   return (
@@ -89,9 +92,10 @@ export default function ProjectsDashboard() {
           <p className="text-sm text-muted-foreground mt-1">Manage your music projects</p>
         </div>
         <div className="flex gap-2">
+          {/* ⭐️ 3. (แก้ไข) Title ของปุ่มให้ชัดเจนขึ้น (Optional) */}
           <Button onClick={handleCreateProject}> 
             <PlusCircle className="h-4 w-4 mr-2" />
-            Add New Project
+            Manage Projects
           </Button>
           <Button 
             variant="outline" 
@@ -123,7 +127,7 @@ export default function ProjectsDashboard() {
 
       {!loading && !error && data.length === 0 && (
         <div className="text-center p-8 border rounded-lg">
-          <p className="text-lg text-muted-foreground">No projects found. Click "Add New Project" to get started.</p>
+          <p className="text-lg text-muted-foreground">No projects found. Go to "Manage Projects" to get started.</p>
         </div>
       )}
 
