@@ -4,18 +4,18 @@ import type { NextRequest } from 'next/server';
 import { auth } from "@/auth"; 
 
 // ⭐️ ใช้ export default async function middleware(request: NextRequest)
-// เพื่อให้เป็นรูปแบบที่ Next.js App Router คาดหวัง
 export default async function middleware(request: NextRequest) {
   
   // 1. เรียกใช้ Auth Handler
-  // ⭐️ ใช้ @ts-ignore เพื่อเลี่ยง Type Error 'NextRequest' vs 'NextAuthRequest'
-  // @ts-ignore
+  // Note: auth() สามารถคืนค่า Session | Response | null | undefined
+  // @ts-ignore // ยังคงต้องใช้ @ts-ignore เพื่อเลี่ยง Type Incompatibility บน NextRequest
   const authResponse = await auth(request); 
   
-  // 2. ถ้ามี Response จาก Auth Handler (Response object, ไม่ใช่ undefined/null)
-  if (authResponse) {
+  // 2. ⭐️ ตรวจสอบ Type: ถ้า authResponse เป็น Response Object จริงๆ
+  // การใช้ instanceof Response ช่วยให้ TypeScript (และเรา) มั่นใจว่ามี .headers
+  if (authResponse instanceof Response) {
     
-    // 3. ⭐️ ใช้ Optional Chaining (?.) บน headers เพื่อแก้ Type Error
+    // 3. ตรวจสอบ Header 'location' ที่บ่งบอกว่า Next-Auth พยายาม Redirect
     const locationHeader = authResponse.headers?.get('location'); 
 
     // 4. ถ้ามี Header Location (หมายถึงมีการ Redirect จาก Next-Auth)
@@ -29,15 +29,15 @@ export default async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl, { status: 307 }); 
     }
     
-    // 6. ถ้าไม่มีการ Redirect (เช่น เป็น 401/403 Response)
+    // 6. ถ้าเป็น Response แต่ไม่ใช่ Redirect (เช่น 401/403)
     return authResponse;
   }
 
-  // 7. ถ้า authResponse เป็น undefined (อนุญาตให้เข้าถึง) 
+  // 7. ถ้า authResponse เป็น Session object หรือ undefined/null (ผู้ใช้เข้าสู่ระบบแล้วหรืออนุญาต)
+  // ให้ดำเนินการต่อ
   return NextResponse.next();
 }
 
-// ⭐️ ต้องมี export const config เหมือนเดิม
 export const config = {
   matcher: [
     '/((?!api/auth|login|_next/static|_next/image|favicon.ico).*)',
