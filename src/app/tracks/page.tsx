@@ -417,25 +417,6 @@ export default function TracksPage() {
                   className='mt-2'
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Duration (seconds)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.duration}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      duration: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  placeholder="240"
-                />
-              </div>
-
-              {/* ⭐️ 1. ลบช่องกรอก Duration ออก */}
               
               <div className="flex flex-col sm:flex-row gap-2 pt-4">
                 <Button type="submit" className="flex-1">
