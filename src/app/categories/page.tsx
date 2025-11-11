@@ -183,16 +183,17 @@ export default function CategoriesPage() {
 
   return (
     <main className="container mx-auto p-8">
-      <div className="mb-8 flex justify-between items-center">
+      {/* ⭐️ ปรับ Header (Responsive) */}
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold">Categories Management</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <Input
             placeholder="New category name"
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
-            className="w-64"
+            className="w-full sm:w-64" // ⭐️ Responsive
           />
-          <Button onClick={handleCreate} disabled={isCreating}>
+          <Button onClick={handleCreate} disabled={isCreating} className="w-full sm:w-auto">
             {isCreating ? <Loader2 className="animate-spin" /> : <PlusCircle />}
             Add Category
           </Button>
@@ -219,17 +220,16 @@ export default function CategoriesPage() {
       )}
 
       {!loading && !error && (
+        <div className="border rounded-lg shadow-lg overflow-hidden bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-                <TableHead className="w-12" />{/* Grip */}
-                <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-center">Order</TableHead>
-                <TableHead className="text-center">Published</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
-            </TableRow>
+                <TableHead className="w-12" />
+                <TableHead>Name</TableHead>
+                <TableHead className="hidden md:table-cell text-center w-24">Order</TableHead>
+                <TableHead className="text-center w-32">Published</TableHead>
+                <TableHead className="text-center w-32 md:w-40">Actions</TableHead>
+              </TableRow>
           </TableHeader>
           <TableBody>
             {categories.map((category) => (
@@ -262,7 +262,7 @@ export default function CategoriesPage() {
                     <span className="font-medium">{category.name}</span>
                   )}
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="hidden md:table-cell text-center">
                   {category.display_order}
                 </TableCell>
                 <TableCell className="text-center">
@@ -323,6 +323,7 @@ export default function CategoriesPage() {
             ))}
           </TableBody>
         </Table>
+      </div>
       )}
     </main>
   );

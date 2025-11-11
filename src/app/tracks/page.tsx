@@ -1,7 +1,7 @@
 /* sax-music-admin/src/app/tracks/page.tsx (อัปเดต) */
 'use client';
 
-import { useEffect, useState, useRef, DragEvent } from 'react'; // ⭐️
+import { useEffect, useState, useRef, DragEvent } from 'react';
 import { adminFetch } from '@/lib/adminFetcher';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,10 +28,10 @@ import {
   Trash2,
   Music,
   X,
-  GripVertical, // ⭐️
+  GripVertical,
 } from 'lucide-react';
-import { AudioUploader } from '@/components/ui/AudioUploader'; // ⭐️
-import { cn } from '@/lib/utils'; // ⭐️
+import { AudioUploader } from '@/components/ui/AudioUploader';
+import { cn } from '@/lib/utils';
 
 interface Project {
   id: string;
@@ -46,7 +46,7 @@ interface Track {
   src: string;
   project_id: string;
   display_order: number;
-  duration: number;
+  // duration ถูกลบ
 }
 
 export default function TracksPage() {
@@ -55,18 +55,18 @@ export default function TracksPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSavingOrder, setIsSavingOrder] = useState(false); // ⭐️
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  
+  // ⭐️ 1. ลบ duration ออกจาก formData
   const [formData, setFormData] = useState({
     title: '',
     artist: '',
     src: '',
-    duration: 0,
   });
 
-  // ⭐️ Refs สำหรับ Drag & Drop
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
@@ -113,7 +113,7 @@ export default function TracksPage() {
 
   const openCreateForm = () => {
     setEditingId(null);
-    setFormData({ title: '', artist: '', src: '', duration: 0 });
+    setFormData({ title: '', artist: '', src: '' }); // ⭐️ 1. ลบ duration
     setIsFormOpen(true);
   };
 
@@ -123,7 +123,7 @@ export default function TracksPage() {
       title: track.title,
       artist: track.artist,
       src: track.src,
-      duration: track.duration,
+      // ⭐️ 1. ลบ duration
     });
     setIsFormOpen(true);
   };
@@ -179,7 +179,7 @@ export default function TracksPage() {
     dragOverItem.current = id;
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (e: DragEvent<HTMLTableRowElement>) => {
     if (!dragItem.current || !dragOverItem.current || dragItem.current === dragOverItem.current) {
       dragItem.current = null;
       dragOverItem.current = null;
@@ -227,19 +227,17 @@ export default function TracksPage() {
 
   return (
     <main className="container mx-auto p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">Tracks Management</h1>
+      {/* ⭐️ ปรับ Header (Responsive) */}
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-8">
+        <h1 className="text-3xl font-bold">Tracks Management</h1>
 
-        <div className="flex gap-4 items-center">
-          <div className="flex-1">
-            <label className="block text-sm font-medium mb-2">
-              Select Project:
-            </label>
+        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+          <div className="flex-1 w-full md:w-64">
             <Select
               value={selectedProjectId}
               onValueChange={setSelectedProjectId}
             >
-              <SelectTrigger className="w-full max-w-md">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Choose project" />
               </SelectTrigger>
               <SelectContent>
@@ -255,7 +253,7 @@ export default function TracksPage() {
           <Button
             onClick={openCreateForm}
             disabled={!selectedProjectId}
-            className="mt-7"
+            className="w-full md:w-auto"
           >
             <PlusCircle />
             Add Track
@@ -292,17 +290,15 @@ export default function TracksPage() {
       )}
 
       {!loading && !error && tracks.length > 0 && (
-        <div className="border rounded-lg shadow-lg overflow-hidden">
+        <div className="border rounded-lg shadow-lg overflow-hidden bg-card">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12" />{/* Grip */}
+                <TableHead className="w-12" />
                 <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-center">Order</TableHead>
-                <TableHead className="text-center">Published</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
+                <TableHead className="hidden sm:table-cell">Artist</TableHead>
+                <TableHead className="hidden md:table-cell text-center w-24">Order</TableHead>
+                <TableHead className="text-center w-32 md:w-40">Actions</TableHead>
                </TableRow>
             </TableHeader>
             <TableBody>
@@ -324,17 +320,11 @@ export default function TracksPage() {
                     <GripVertical className="size-5" />
                   </TableCell>
                   <TableCell className="font-medium">{track.title}</TableCell>
-                  <TableCell>{track.artist || '-'}</TableCell>
-                  <TableCell className="text-center">
-                    {track.duration > 0
-                      ? `${Math.floor(track.duration / 60)}:${(
-                          track.duration % 60
-                        )
-                          .toString()
-                          .padStart(2, '0')}`
-                      : '-'}
-                  </TableCell>
-                  <TableCell className="text-center">
+                  {/* ⭐️ 2. ซ่อน Artist บนจอมือถือ (sm) */}
+                  <TableCell className="hidden sm:table-cell">{track.artist || '-'}</TableCell>
+                  
+                  {/* ⭐️ 3. ซ่อน Order บนจอมือถือ (md) */}
+                  <TableCell className="hidden md:table-cell text-center">
                     {track.display_order}
                   </TableCell>
                   <TableCell className="text-center">
@@ -365,7 +355,7 @@ export default function TracksPage() {
       {/* Form Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-2xl">
+          <div className="bg-card rounded-lg p-6 w-full max-w-2xl">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">
                 {editingId ? 'Edit Track' : 'Add Track'}
@@ -445,7 +435,9 @@ export default function TracksPage() {
                 />
               </div>
 
-              <div className="flex gap-2 pt-4">
+              {/* ⭐️ 1. ลบช่องกรอก Duration ออก */}
+              
+              <div className="flex flex-col sm:flex-row gap-2 pt-4">
                 <Button type="submit" className="flex-1">
                   {editingId ? 'Update' : 'Create'}
                 </Button>

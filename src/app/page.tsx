@@ -1,14 +1,12 @@
-/* sax-music-admin/src/app/page.tsx (แก้ไข) */
+/* sax-music-admin/src/app/page.tsx (อัปเดตใหม่) */
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminFetch } from '@/lib/adminFetcher';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, PlusCircle, Pencil, Trash2, LogOut } from 'lucide-react';
+import { Loader2, PlusCircle, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { signOut } from 'next-auth/react';
 
 interface ProjectAdminData {
   id: string;
@@ -18,6 +16,11 @@ interface ProjectAdminData {
   category_id: string;
   categoryName: string;
   trackCount: number;
+  is_published: boolean;
+}
+
+interface GroupedProjects {
+  [categoryName: string]: ProjectAdminData[];
 }
 
 export default function ProjectsDashboard() {
@@ -25,7 +28,6 @@ export default function ProjectsDashboard() {
   const [data, setData] = useState<ProjectAdminData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loggingOut, setLoggingOut] = useState(false);
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -46,68 +48,41 @@ export default function ProjectsDashboard() {
     fetchProjects();
   }, [fetchProjects]);
 
-  const handleLogout = async () => {
-  if (!confirm('Are you sure you want to logout?')) return;
-  
-  setLoggingOut(true);
-    try {
-      await signOut({ redirect: true, redirectTo: '/login' });
-    } catch (e) {
-      console.error('Logout error:', e);
-      setLoggingOut(false);
-    }
-  };
+  const groupedProjects = useMemo(() => {
+    return data.reduce((acc, project) => {
+      const category = project.categoryName || 'Uncategorized';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(project);
+      return acc;
+    }, {} as GroupedProjects);
+  }, [data]);
 
   const handleDeleteProject = async (id: string, title: string) => {
     if (!window.confirm(`Are you sure you want to delete project: "${title}"? This action cannot be undone.`)) {
       return;
     }
-
     try {
-      await adminFetch(`/project/${id}`, { method: 'DELETE' });
-      alert(`Project "${title}" deleted successfully!`);
+      await adminFetch(`/projects/${id}`, { method: 'DELETE' });
       fetchProjects();
     } catch (e: any) {
-      console.error('Failed to delete project:', e);
       alert(`Error deleting project: ${e.message || 'Unknown error'}`);
     }
   };
 
-  // ⭐️ 1. (แก้ไข) เปลี่ยน router.push
-  const handleCreateProject = () => {
-    router.push('/projects');
-  };
-
-  // ⭐️ 2. (แก้ไข) เปลี่ยน router.push
-  const handleEditProject = (id: string) => {
-    router.push('/projects');
-  };
-
   return (
     <main className="container max-w-7xl mx-auto py-10 px-4">
-      {/* Header with Logout */}
-      <div className="flex justify-between items-center mb-6">
+      {/* Header (Responsive) */}
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard: Projects</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your music projects</p>
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Projects Overview by Category</p>
         </div>
         <div className="flex gap-2">
-          {/* ⭐️ 3. (แก้ไข) Title ของปุ่มให้ชัดเจนขึ้น (Optional) */}
-          <Button onClick={handleCreateProject}> 
+          <Button onClick={() => router.push('/projects')}>
             <PlusCircle className="h-4 w-4 mr-2" />
             Manage Projects
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleLogout}
-            disabled={loggingOut}
-          >
-            {loggingOut ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <LogOut className="h-4 w-4 mr-2" />
-            )}
-            Logout
           </Button>
         </div>
       </div>
@@ -126,52 +101,63 @@ export default function ProjectsDashboard() {
       )}
 
       {!loading && !error && data.length === 0 && (
-        <div className="text-center p-8 border rounded-lg">
+        <div className="text-center p-8 border rounded-lg bg-card">
           <p className="text-lg text-muted-foreground">No projects found. Go to "Manage Projects" to get started.</p>
         </div>
       )}
 
+      {/* ⭐️ 1. เปลี่ยน Grid เป็น Layout แนวตั้ง (space-y-6) */}
       {!loading && !error && data.length > 0 && (
-        <div className="border rounded-lg shadow-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-center">Tracks</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.map((project) => (
-                <TableRow key={project.id}>
-                  <TableCell className="text-muted-foreground">{project.id.substring(0, 8)}...</TableCell>
-                  <TableCell className="font-medium">{project.title}</TableCell>
-                  <TableCell>{project.categoryName}</TableCell>
-                  <TableCell className="text-center">{project.trackCount}</TableCell>
-                  <TableCell className="text-center space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      title="Edit"
-                      onClick={() => handleEditProject(project.id)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="icon" 
-                      title="Delete"
-                      onClick={() => handleDeleteProject(project.id, project.title)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="flex flex-col space-y-6">
+          
+          {Object.entries(groupedProjects).map(([categoryName, projects]) => (
+            <div key={categoryName} className="bg-card border border-border rounded-lg shadow-lg flex flex-col">
+              {/* Category Header */}
+              <div className="p-3 md:p-4 border-b">
+                <h3 className="text-xl font-semibold text-primary">{categoryName}</h3>
+                <p className="text-sm text-muted-foreground">{projects.length} {projects.length > 1 ? 'projects' : 'project'}</p>
+              </div>
+
+              {/* ⭐️ 2. เพิ่ม max-h และ overflow-y-auto สำหรับ Scroll ภายใน */}
+              <div className="p-2 md:p-4 space-y-2 max-h-[300px] overflow-y-auto">
+                {projects.map(project => (
+                  <div key={project.id} className="flex items-center justify-between gap-2 p-2 md:p-3 rounded-md bg-background border">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate text-sm" title={project.title}>{project.title}</p>
+                      <p className="text-xs text-muted-foreground">{project.trackCount} {project.trackCount > 1 ? 'tracks' : 'track'}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+                      {project.is_published ? (
+                         <Eye className="h-4 w-4 text-green-500" title="Published" />
+                      ) : (
+                         <EyeOff className="h-4 w-4 text-muted-foreground" title="Not Published" />
+                      )}
+                      <Button 
+                        variant="outline" 
+                        size="icon-sm" 
+                        title="Edit"
+                        onClick={() => router.push('/projects')}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="icon-sm" 
+                        title="Delete"
+                        onClick={() => handleDeleteProject(project.id, project.title)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* ⭐️ 3. ลบ Footer (ปุ่ม Manage Tracks) ออก */}
+
+            </div>
+          ))}
         </div>
       )}
     </main>

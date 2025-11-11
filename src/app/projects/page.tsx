@@ -1,7 +1,7 @@
-/* sax-music-admin/src/app/projects/page.tsx (อัปเดต) */
+/* sax-music-admin/src/app/projects/page.tsx (อัปเดตใหม่) */
 'use client';
 
-import { useEffect, useState, useRef, DragEvent } from 'react';
+import { useEffect, useState, useRef, DragEvent, useMemo } from 'react';
 import { adminFetch } from '@/lib/adminFetcher';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ import {
 import { ImageUploader } from '@/components/ui/ImageUploader';
 import { cn } from '@/lib/utils';
 
+// ... (Interface Project, Category, FormData, initialFormData ... ไม่เปลี่ยนแปลง)
 interface Category {
   id: string;
   name: string;
@@ -50,14 +51,13 @@ interface Project {
   categoryName?: string;
 }
 
-// ⭐️ 1. เพิ่ม tempImageKey ใน State
 interface FormData {
   id: string;
   title: string;
   description: string;
-  image: string; // URL ปัจจุบัน (สำหรับ Preview)
+  image: string;
   category_id: string;
-  tempImageKey?: string; // Key ชั่วคราว (ถ้ามีการอัปโหลดใหม่)
+  tempImageKey?: string;
 }
 
 const initialFormData: FormData = {
@@ -69,6 +69,7 @@ const initialFormData: FormData = {
   tempImageKey: '',
 };
 
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -76,18 +77,15 @@ export default function ProjectsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
 
+  // ⭐️ 1. เปลี่ยนค่าเริ่มต้นเป็น ""
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+
   // Form state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    id: '',
-    title: '',
-    description: '',
-    image: '',
-    category_id: '',
-  });
+  const [formData, setFormData] = useState(initialFormData);
 
-  // ⭐️ Refs สำหรับ Drag & Drop
+  // Refs สำหรับ Drag & Drop
   const dragItem = useRef<string | null>(null);
   const dragOverItem = useRef<string | null>(null);
 
@@ -100,6 +98,11 @@ export default function ProjectsPage() {
       ]);
       setProjects(projectsData);
       setCategories(categoriesData);
+      
+      // ⭐️ 2. ตั้งค่า Category แรกเป็น Default
+      if (categoriesData.length > 0 && selectedCategoryId === '') {
+        setSelectedCategoryId(categoriesData[0].id);
+      }
       setError(null);
     } catch (e: any) {
       setError(e.message);
@@ -110,12 +113,15 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, []); // ⭐️ เอา [selectedCategoryId] ออก
 
   const openCreateForm = () => {
     setEditingId(null);
-    // ⭐️ 2. Reset formData (รวม tempImageKey)
-    setFormData(initialFormData);
+    setFormData({
+      ...initialFormData,
+      // ⭐️ 3. ตั้งค่า Category ปัจจุบัน
+      category_id: selectedCategoryId,
+    });
     setIsFormOpen(true);
   };
   
@@ -127,13 +133,13 @@ export default function ProjectsPage() {
       description: project.description,
       image: project.image,
       category_id: project.category_id,
-      tempImageKey: '', // ⭐️ เริ่มต้นด้วย Key ว่าง
+      tempImageKey: '',
     });
     setIsFormOpen(true);
   };
 
-  // ⭐️ 3. อัปเดต handleSubmit
   const handleSubmit = async (e: React.FormEvent) => {
+    // ... ( handleSubmit ... ไม่เปลี่ยนแปลง)
     e.preventDefault();
 
     if (!formData.title || !formData.category_id) {
@@ -149,14 +155,13 @@ export default function ProjectsPage() {
           body: JSON.stringify({
             title: formData.title,
             description: formData.description,
-            image: formData.image, // URL (เก่า หรือ ใหม่)
+            image: formData.image,
             category_id: formData.category_id,
-            tempImageKey: formData.tempImageKey, // ⭐️ ส่ง Key ใหม่ (ถ้ามี)
+            tempImageKey: formData.tempImageKey,
           }),
         });
       } else {
         // Create
-        // ⭐️ สร้าง ID ที่นี่
         const id =
           formData.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_') +
           '_' +
@@ -165,40 +170,48 @@ export default function ProjectsPage() {
         await adminFetch('/projects', {
           method: 'POST',
           body: JSON.stringify({
-            ...formData, // ⭐️ ส่ง formData ทั้งหมด (รวม tempImageKey)
-            id, // ⭐️ ส่ง ID ที่สร้างใหม่
-            display_order: projects.length,
+            ...formData,
+            id,
+            display_order: projects.length, // ⭐️ order จะถูกจัดใหม่ใน Category
           }),
         });
       }
       setIsFormOpen(false);
-      fetchData();
+      fetchData(); // ⭐️ Refresh ข้อมูลทั้งหมด
     } catch (e: any) {
       alert(`Error: ${e.message}`);
     }
   };
 
   const handleDelete = async (id: string, title: string) => {
+    // ... ( handleDelete ... ไม่เปลี่ยนแปลง)
     if (!confirm(`ต้องการลบ "${title}" หรือไม่? Tracks ทั้งหมดจะถูกลบด้วย`))
       return;
 
     try {
       await adminFetch(`/projects/${id}`, { method: 'DELETE' });
-      fetchData();
+      fetchData(); // ⭐️ Refresh ข้อมูลทั้งหมด
     } catch (e: any) {
       alert(`Error: ${e.message}`);
     }
   };
 
   const togglePublished = async (id: string, currentPublished: boolean) => {
+    // ... ( togglePublished ... ไม่เปลี่ยนแปลง)
     try {
       await adminFetch(`/projects/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ is_published: !currentPublished }),
       });
-      fetchData();
+      // ⭐️ อัปเดต State ทันที (Optimistic Update)
+      setProjects(prevProjects => 
+        prevProjects.map(p => 
+          p.id === id ? { ...p, is_published: !currentPublished } : p
+        )
+      );
     } catch (e: any) {
       alert(`Error: ${e.message}`);
+      fetchData(); // Rollback
     }
   };
 
@@ -206,7 +219,15 @@ export default function ProjectsPage() {
     return categories.find((c) => c.id === categoryId)?.name || 'Unknown';
   };
 
-  // ⭐️ --- Logic สำหรับ Drag & Drop ---
+  // ⭐️ 4. Logic การกรอง (ลบ 'all' case)
+  const filteredProjects = useMemo(() => {
+    return projects
+      .filter(p => p.category_id === selectedCategoryId)
+      .sort((a, b) => a.display_order - b.display_order); // ⭐️ จัดเรียงตาม Order
+  }, [projects, selectedCategoryId]);
+
+
+  // ⭐️ 5. --- Logic สำหรับ Drag & Drop (อัปเดตใหม่) ---
   const handleDragStart = (id: string) => {
     dragItem.current = id;
   };
@@ -219,34 +240,45 @@ export default function ProjectsPage() {
     if (!dragItem.current || !dragOverItem.current || dragItem.current === dragOverItem.current) {
       dragItem.current = null;
       dragOverItem.current = null;
-      setProjects([...projects]); // Rerender
       return;
     }
     
-    const newProjects = [...projects];
-    const dragItemIndex = newProjects.findIndex(p => p.id === dragItem.current);
-    const dragOverItemIndex = newProjects.findIndex(p => p.id === dragOverItem.current);
+    // 1. ทำงานกับ List ที่กรองแล้วเท่านั้น
+    const currentCategoryProjects = [...filteredProjects];
+    const dragItemIndex = currentCategoryProjects.findIndex(p => p.id === dragItem.current);
+    const dragOverItemIndex = currentCategoryProjects.findIndex(p => p.id === dragOverItem.current);
     
-    const [draggedItem] = newProjects.splice(dragItemIndex, 1);
-    newProjects.splice(dragOverItemIndex, 0, draggedItem);
+    if (dragItemIndex === -1 || dragOverItemIndex === -1) return;
+
+    // 2. ย้าย Item ใน List ที่กรองแล้ว
+    const [draggedItem] = currentCategoryProjects.splice(dragItemIndex, 1);
+    currentCategoryProjects.splice(dragOverItemIndex, 0, draggedItem);
     
-    const updatedProjects = newProjects.map((p, index) => ({
+    // 3. อัปเดต display_order เฉพาะในกลุ่มนี้ (0...N)
+    const reorderedCategoryProjects = currentCategoryProjects.map((p, index) => ({
       ...p,
       display_order: index,
     }));
     
-    setProjects(updatedProjects);
+    // 4. อัปเดต State หลัก
+    const otherProjects = projects.filter(p => p.category_id !== selectedCategoryId);
+    setProjects([...otherProjects, ...reorderedCategoryProjects]);
     
     dragItem.current = null;
     dragOverItem.current = null;
 
-    saveOrder(updatedProjects);
+    // 5. ส่งเฉพาะ List ที่อัปเดตไปบันทึก
+    saveOrder(reorderedCategoryProjects);
   };
 
-  const saveOrder = async (updatedProjects: Project[]) => {
+  const saveOrder = async (updatedCategoryProjects: Project[]) => {
     setIsSavingOrder(true);
     try {
-      const itemsToSave = updatedProjects.map(p => ({ id: p.id, display_order: p.display_order }));
+      const itemsToSave = updatedCategoryProjects.map(p => ({ 
+        id: p.id, 
+        display_order: p.display_order 
+      }));
+      
       await adminFetch('/projects/reorder', {
         method: 'PATCH',
         body: JSON.stringify({ items: itemsToSave }),
@@ -261,14 +293,39 @@ export default function ProjectsPage() {
   // ⭐️ --- จบ Logic Drag & Drop ---
 
   return (
-    <main className="container mx-auto p-8">
-      {/* ... (ส่วน Header, Loading, Error, Empty State เหมือนเดิม) ... */}
-      <div className="mb-8 flex justify-between items-center">
+    <main className="container mx-auto p-4 md:p-8">
+      {/* Header (Responsive) */}
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold">Projects Management</h1>
-        <Button onClick={openCreateForm}>
-          <PlusCircle />
-          Add Project
-        </Button>
+        
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <Select
+            value={selectedCategoryId}
+            onValueChange={setSelectedCategoryId}
+            disabled={categories.length === 0} // ⭐️ Disable ถ้าไม่มี Category
+          >
+            <SelectTrigger className="w-full md:w-64">
+              <SelectValue placeholder="Select category..." />
+            </SelectTrigger>
+            <SelectContent>
+              {/* ⭐️ 6. ลบ "All Categories" */}
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button 
+            onClick={openCreateForm} 
+            className="w-full md:w-auto"
+            disabled={categories.length === 0} // ⭐️ Disable ถ้าไม่มี Category
+          >
+            <PlusCircle />
+            Add Project
+          </Button>
+        </div>
       </div>
 
       {isSavingOrder && (
@@ -291,39 +348,41 @@ export default function ProjectsPage() {
       )}
 
       {!loading && !error && projects.length === 0 && (
-        <div className="text-center p-8 border rounded-lg">
+        <div className="text-center p-8 border rounded-lg bg-card">
           <p className="text-lg text-muted-foreground">
-            No projects found. Click "Add Project" to get started.
+            {categories.length === 0 
+              ? 'Please create a Category first.' 
+              : 'No projects found. Click "Add Project" to get started.'}
           </p>
         </div>
       )}
 
-      {/* ... (Table Rendering เหมือนเดิม, อย่าลืมแก้ Hydration Error) ... */}
-      {!loading && !error && projects.length > 0 && (
-        <div className="border rounded-lg shadow-lg overflow-hidden">
+      {/* ⭐️ 7. ใช้ 'filteredProjects' */}
+      {!loading && !error && filteredProjects.length > 0 && (
+        <div className="border rounded-lg shadow-lg overflow-hidden bg-card">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12" />{/* ⭐️ แก้ Hydration */}
+                <TableHead className="w-12" />
                 <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-center">Order</TableHead>
+                <TableHead className="hidden md:table-cell">Category</TableHead>
+                <TableHead className="hidden lg:table-cell max-w-xs">Description</TableHead>
+                <TableHead className="hidden md:table-cell text-center">Order</TableHead>
                 <TableHead className="text-center">Published</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
+                <TableHead className="text-center w-32 md:w-40">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <TableRow
                   key={project.id}
-                  draggable
+                  draggable // ⭐️ 8. เปิด Drag & Drop
                   onDragStart={() => handleDragStart(project.id)}
                   onDragEnter={() => handleDragEnter(project.id)}
                   onDragEnd={handleDragEnd}
                   onDragOver={(e) => e.preventDefault()}
                   className={cn(
-                    'cursor-move',
+                    'cursor-move', // ⭐️ 8. เปิด Drag & Drop
                     dragItem.current === project.id && 'opacity-30',
                     dragOverItem.current === project.id && 'bg-muted'
                   )}
@@ -332,13 +391,13 @@ export default function ProjectsPage() {
                     <GripVertical className="size-5" />
                   </TableCell>
                   <TableCell className="font-medium">{project.title}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {project.categoryName || getCategoryName(project.category_id)}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">
+                  <TableCell className="hidden lg:table-cell max-w-xs truncate">
                     {project.description}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="hidden md:table-cell text-center">
                     {project.display_order}
                   </TableCell>
                   <TableCell className="text-center">
@@ -353,7 +412,7 @@ export default function ProjectsPage() {
                     </Button>
                   </TableCell>
                   <TableCell className="text-center">
-                    <div className="flex justify-center gap-2">
+                    <div className="flex justify-center gap-1.5 md:gap-2">
                       <Button
                         variant="outline"
                         size="icon-sm"
@@ -379,11 +438,10 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Form Modal */}
+      {/* ⭐️ 9. Modal Form (Responsive) */}
       {isFormOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            {/* ... (Modal Header, Form Fields: Title, Category, Description เหมือนเดิม) ... */}
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border rounded-lg p-4 md:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">
                 {editingId ? 'Edit Project' : 'Create Project'}
@@ -448,7 +506,6 @@ export default function ProjectsPage() {
                 />
               </div>
 
-              {/* ⭐️ 4. อัปเดต onUploadSuccess */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Image
@@ -459,11 +516,10 @@ export default function ProjectsPage() {
                     if (result) {
                       setFormData({
                         ...formData,
-                        image: result.url, // สำหรับ Preview
-                        tempImageKey: result.key, // สำหรับส่งให้ Backend
+                        image: result.url,
+                        tempImageKey: result.key,
                       });
                     } else {
-                      // เมื่อกดลบรูป
                       setFormData({
                         ...formData,
                         image: '',
@@ -474,7 +530,7 @@ export default function ProjectsPage() {
                 />
               </div>
 
-              <div className="flex gap-2 pt-4">
+              <div className="flex flex-col sm:flex-row gap-2 pt-4">
                 <Button type="submit" className="flex-1">
                   {editingId ? 'Update' : 'Create'}
                 </Button>
