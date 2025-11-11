@@ -1,7 +1,10 @@
+// saxkung/sax-music-admin/auth.ts
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { authConfig } from "./auth.config"; // ⭐️ Import authConfig
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  ...authConfig, // ⭐️ ใช้ authConfig สำหรับ authorized callback
   providers: [
     Credentials({
       credentials: {
@@ -42,17 +45,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: '/login',
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const isOnLogin = nextUrl.pathname === '/login';
-      const isOnPublic = nextUrl.pathname.startsWith('/_next') || 
-                        nextUrl.pathname.startsWith('/favicon');
-      
-      if (isOnPublic) return true;
-      if (isOnLogin) return true;
-      
-      return isLoggedIn;
-    },
+    // ⭐️ ลบ authorized ออกไปที่ auth.config.ts แล้ว
+
+    // เก็บ jwt และ session callbacks ไว้ที่นี่ (ไม่เกี่ยวกับ authorized)
     jwt({ token, user }) {
       if (user) {
         token.role = user.role;
