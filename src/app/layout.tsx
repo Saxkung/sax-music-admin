@@ -52,7 +52,12 @@ function AdminNavbar() {
               Tracks
             </Link>
             <form action="/api/auth/logout" method="POST">
-              <button type="submit" className="hover:text-destructive transition-colors">
+              <button 
+                onClick={async () => {
+                  await signOut({ redirect: true, redirectTo: '/login' });
+                }}
+                className="hover:text-destructive transition-colors"
+              >
                 Logout
               </button>
             </form>
@@ -75,10 +80,10 @@ export default function RootLayout({
   const isLoginPage = pathname === '/login';
 
   return (
-    <html lang="en">
+    <html lang="en" className="dark"> {/* ⭐️ เพิ่ม dark */}
       {/* ⭐️ 6. (Optional) ถ้าต้องการ Title คืนมา ให้ใส่ <head> ที่นี่ */}
       <head>
-        <title>Admin Panel - SAX Music</title>
+        <title>Admin Panel - SAX MUSIC</title>
         <meta name="description" content="Admin management system" />
       </head>
       

@@ -10,7 +10,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         // ตรวจสอบ username/password
-        const validUsername = process.env.ADMIN_USERNAME || "admin";
+        const validUsername = process.env.ADMIN_USERNAME;
+        if (!validUsername) {
+          console.error("ADMIN_USERNAME not set in environment");
+          return null;
+        }
         const validPassword = process.env.ADMIN_PASSWORD;
 
         if (!validPassword) {
@@ -25,7 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return {
             id: "1",
             name: "Admin",
-            email: "admin@saxmusic.com",
+            email: "info@saxmusic.com",
             role: "admin"
           };
         }

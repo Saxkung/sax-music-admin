@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Loader2, PlusCircle, Pencil, Trash2, LogOut } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { signOut } from '@/auth';
 
 interface ProjectAdminData {
   id: string;
@@ -45,16 +46,11 @@ export default function ProjectsDashboard() {
   }, [fetchProjects]);
 
   const handleLogout = async () => {
-    if (!confirm('Are you sure you want to logout?')) return;
-    
-    setLoggingOut(true);
+  if (!confirm('Are you sure you want to logout?')) return;
+  
+  setLoggingOut(true);
     try {
-      // เรียก API logout
-      await fetch('/api/auth/signout', {
-        method: 'POST',
-      });
-      router.push('/login');
-      router.refresh();
+      await signOut({ redirect: true, redirectTo: '/login' });
     } catch (e) {
       console.error('Logout error:', e);
       setLoggingOut(false);
