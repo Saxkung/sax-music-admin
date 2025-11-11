@@ -1,8 +1,8 @@
 /* sax-music-admin/src/app/api/admin-proxy/[...path]/route.ts - PRODUCTION READY */
 import { NextRequest, NextResponse } from 'next/server';
 
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+let ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+let API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // ตรวจสอบ Environment Variables ตั้งแต่ต้น
 if (!ADMIN_TOKEN || !API_URL) {
