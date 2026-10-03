@@ -1,22 +1,14 @@
-// saxkung/sax-music-admin/next.config.ts
-import type { NextConfig } from "next";
-import path from "path";
-
-const nextConfig: NextConfig = {
+import type { NextConfig } from 'next';
+const config: NextConfig = {
   output: 'standalone',
-  
-  assetPrefix: process.env.NODE_ENV === 'production' 
-    ? '/'
-    : undefined,
-
-  // ⭐️ แก้ปัญหา Tailwind v4 ไม่ resolve จาก parent directory
-  experimental: {
-    turbo: {
-      resolveAlias: {
-        tailwindcss: path.resolve(__dirname, "node_modules/tailwindcss"),
-      },
-    },
+  async headers() {
+    return [{ source: '/:path*', headers: [
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'X-Frame-Options', value: 'DENY' },
+      { key: 'Referrer-Policy', value: 'same-origin' },
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+      { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : '') + "; style-src 'self' 'unsafe-inline'; img-src 'self' https://hls.saxmusic.site data: blob:; font-src 'self'; connect-src 'self' https://hls.saxmusic.site; media-src 'self' https://hls.saxmusic.site blob:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" },
+    ] }];
   },
 };
-
-export default nextConfig;
+export default config;

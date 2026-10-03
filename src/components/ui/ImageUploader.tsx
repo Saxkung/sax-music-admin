@@ -1,104 +1,22 @@
-/* sax-music-admin/src/components/ui/ImageUploader.tsx (อัปเดต) */
 'use client';
-
-import * as React from 'react';
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { ImagePlus, Upload, Loader2 } from 'lucide-react';
 import { useAdminUploader } from '@/hooks/useAdminUploader';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Loader2, Upload, X, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-interface UploadResult {
-  url: string;
-  key: string;
-}
-
-interface ImageUploaderProps {
-  value: string; // URL รูปภาพปัจจุบัน
-  // ⭐️ 1. แก้ไข Type ของ onUploadSuccess
-  onUploadSuccess: (result: UploadResult | null) => void;
-  className?: string;
-}
-
-export function ImageUploader({
-  value,
-  onUploadSuccess,
-  className,
-}: ImageUploaderProps) {
-  const { uploadFile, isLoading, progress, error } = useAdminUploader('direct');
-  // ⭐️ 2. ใช้ value สำหรับ preview เริ่มต้น
-  const [preview, setPreview] = useState<string | null>(value);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+import type { UploadResult } from '@/lib/studio';
+export function ImageUploader({ value, onChange, disabled = false, onBusyChange }: { value: string; onChange: (url: string, key?: string) => void; disabled?: boolean; onBusyChange?: (busy: boolean) => void }) {
+  const input = useRef<HTMLInputElement>(null); const uploader = useAdminUploader();
+  useEffect(() => { onBusyChange?.(uploader.isLoading); }, [uploader.isLoading, onBusyChange]);
+  async function upload(file?: File) {
     if (!file) return;
-
-    // 1. สร้าง Preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // 2. เริ่มอัปโหลด
-    const result = await uploadFile(file);
-    if (result) {
-      // ⭐️ 3. คืนค่าทั้ง Object (url และ key)
-      onUploadSuccess(result);
-      setPreview(result.url); // อัปเดต Preview เป็น URL จริง
-    }
-  };
-
-  return (
-    <div className={cn('space-y-3', className)}>
-      <div className="border rounded-md p-4 space-y-3">
-        {preview && (
-          <div className="relative group w-48 h-48 mx-auto border rounded">
-            <img
-              src={preview}
-              alt="Image Preview"
-              className="w-full h-full object-contain"
-            />
-            <Button
-              variant="destructive"
-              size="icon-sm"
-              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => {
-                setPreview(null);
-                // ⭐️ 4. คืนค่า null เมื่อลบ
-                onUploadSuccess(null); 
-              }}
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-        )}
-
-        <Input
-          type="file"
-          accept="image/png, image/jpeg, image/avif, image/webp"
-          onChange={handleFileChange}
-          disabled={isLoading}
-          className="file:text-primary file:font-semibold"
-        />
-      </div>
-
-      {isLoading && (
-        <div className="w-full bg-muted rounded-full h-2.5">
-          <div
-            className="bg-primary h-2.5 rounded-full"
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
-      )}
-
-      {error && (
-        <div className="text-destructive text-sm flex items-center gap-2">
-          <AlertCircle className="size-4" />
-          <p>Upload Failed: {error}</p>
-        </div>
-      )}
-    </div>
-  );
+    if (!/\.(png|jpe?g|webp|avif)$/i.test(file.name) || file.size > 5 * 1024 * 1024) { window.alert('ใช้รูป JPG, PNG, WebP หรือ AVIF ขนาดไม่เกิน 5 MB'); return; }
+    try { const result: UploadResult = await uploader.uploadFile(file); onChange(result.url, result.key); } catch { /* Inline uploader error below. */ }
+    if (input.current) input.current.value = '';
+  }
+  return <div className="cover-uploader"><button type="button" className="cover-picker" disabled={disabled || uploader.isLoading} onClick={() => input.current?.click()} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (!disabled && !uploader.isLoading) void upload(event.dataTransfer.files[0]); }} aria-label="อัปโหลดหรือเปลี่ยนรูปปก">
+    {value ? <img src={value} alt="รูปปกโปรเจกต์" width={300} height={400} /> : <div><ImagePlus size={32} /><span>เพิ่มรูปปก</span><small>ลากรูปมาวาง หรือกดเพื่อเลือก</small></div>}
+    <span className="cover-picker-action">{uploader.isLoading ? <><Loader2 size={16} className="spin" />{uploader.progress}%</> : <><Upload size={16} />{value ? 'เปลี่ยนรูปปก' : 'เลือกรูปปก'}</>}</span></button>
+    <input type="file" hidden ref={input} accept=".jpg,.jpeg,.png,.webp,.avif" onChange={event => void upload(event.target.files?.[0])} />
+    <small className="muted">JPG, PNG, WebP, AVIF · สูงสุด 5 MB</small>{uploader.error && <p className="field-error" role="alert">{uploader.error}</p>}
+    <details className="advanced"><summary>ใช้ URL รูปแทน</summary><label className="field-label" htmlFor="cover-url">URL รูปปก</label><input id="cover-url" className="field" type="url" value={value} onChange={event => onChange(event.target.value)} disabled={disabled || uploader.isLoading} placeholder="https://hls.saxmusic.site/…" /></details>
+  </div>;
 }

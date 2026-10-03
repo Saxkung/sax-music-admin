@@ -16,6 +16,9 @@ export const authConfig = {
         const validPassword = process.env.ADMIN_PASSWORD;
 
         if (
+          validUsername && validPassword &&
+          typeof credentials?.username === 'string' &&
+          typeof credentials?.password === 'string' &&
           credentials?.username === validUsername && 
           credentials?.password === validPassword
         ) {
@@ -34,6 +37,7 @@ export const authConfig = {
   pages: {
     signIn: '/login',
   },
+  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: 24 * 60 * 60, // 24 hours

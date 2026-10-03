@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sax-music-studio",
+  "workers_dev": false,
+  "preview_urls": false,
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-03",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "sax-music-studio"
+    },
+    {
+      "binding": "SAX_MUSIC_API",
+      "service": "sax-music-api"
+    }
+  ],
+  "vars": {
+    "AUTH_URL": "https://admin.saxmusic.site",
+    "AUTH_TRUST_HOST": "true",
+    "API_URL": "https://sax-music-api.skmyti00.workers.dev"
+  },
+  "routes": [
+    {
+      "pattern": "admin.saxmusic.site/*",
+      "zone_name": "saxmusic.site"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "account_id": "06adb831a22b9b8824bea37e691cf101"
+}
