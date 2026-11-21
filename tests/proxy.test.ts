@@ -18,7 +18,7 @@ test('Studio loads migrated covers and HLS from the configured media host', asyn
   const policy = rules?.[0].headers.find(header => header.key === 'Content-Security-Policy')?.value;
   assert.ok(policy);
   for (const directive of ['img-src', 'connect-src', 'media-src']) {
-    const sources = policy.split(';').map(value => value.trim().split(/\s+/)).find(([key]) => key === directive);
+    const sources: string[] | undefined = policy.split(';').map(value => value.trim().split(/\s+/)).find(([key]) => key === directive);
     assert.ok(sources?.includes('https://hls.saxmusic.work'));
     assert.equal(sources?.includes('https://hls.saxmusic.site'), false);
   }
