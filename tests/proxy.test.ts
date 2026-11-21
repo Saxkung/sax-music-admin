@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { forwardAdminRequest } from '../src/lib/proxy.ts';
-const origin = 'https://admin.saxmusic.site';
+import nextConfig from '../next.config.ts';
+const origin = 'https://admin.saxmusic.work';
 const session = { user: { role: 'admin' } };
 test('anonymous callers cannot reach the privileged backend', async () => {
   let called = false;
@@ -11,6 +12,16 @@ test('anonymous callers cannot reach the privileged backend', async () => {
 test('cross-origin writes are rejected even with an admin session', async () => {
   const response = await forwardAdminRequest(new Request(origin + '/api/admin-proxy/projects', { method: 'POST', headers: { Origin: 'https://foreign.test' } }), ['projects'], { session, token: 'test', apiOrigin: 'https://api.test', upstream: async () => { throw new Error('must not reach backend'); } });
   assert.equal(response.status, 403);
+});
+test('Studio loads migrated covers and HLS from the configured media host', async () => {
+  const rules = await nextConfig.headers?.();
+  const policy = rules?.[0].headers.find(header => header.key === 'Content-Security-Policy')?.value;
+  assert.ok(policy);
+  for (const directive of ['img-src', 'connect-src', 'media-src']) {
+    const sources = policy.split(';').map(value => value.trim().split(/\s+/)).find(([key]) => key === directive);
+    assert.ok(sources?.includes('https://hls.saxmusic.work'));
+    assert.equal(sources?.includes('https://hls.saxmusic.site'), false);
+  }
 });
 test('authenticated uploads preserve multipart body, query and server-only authorization', async () => {
   const form = new FormData(); form.append('file', new File(['audio'], 'theme.mp3'));

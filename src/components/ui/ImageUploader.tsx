@@ -17,6 +17,6 @@ export function ImageUploader({ value, onChange, disabled = false, onBusyChange 
     <span className="cover-picker-action">{uploader.isLoading ? <><Loader2 size={16} className="spin" />{uploader.progress}%</> : <><Upload size={16} />{value ? 'เปลี่ยนรูปปก' : 'เลือกรูปปก'}</>}</span></button>
     <input type="file" hidden ref={input} accept=".jpg,.jpeg,.png,.webp,.avif" onChange={event => void upload(event.target.files?.[0])} />
     <small className="muted">JPG, PNG, WebP, AVIF · สูงสุด 5 MB</small>{uploader.error && <p className="field-error" role="alert">{uploader.error}</p>}
-    <details className="advanced"><summary>ใช้ URL รูปแทน</summary><label className="field-label" htmlFor="cover-url">URL รูปปก</label><input id="cover-url" className="field" type="url" value={value} onChange={event => onChange(event.target.value)} disabled={disabled || uploader.isLoading} placeholder="https://hls.saxmusic.site/…" /></details>
+    <details className="advanced"><summary>ใช้ URL รูปแทน</summary><label className="field-label" htmlFor="cover-url">URL รูปปก</label><input id="cover-url" className="field" type="url" value={value} onChange={event => onChange(event.target.value)} disabled={disabled || uploader.isLoading} placeholder="https://hls.saxmusic.work/…" /></details>
   </div>;
 }

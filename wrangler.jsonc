@@ -24,14 +24,14 @@
     }
   ],
   "vars": {
-    "AUTH_URL": "https://admin.saxmusic.site",
+    "AUTH_URL": "https://admin.saxmusic.work",
     "AUTH_TRUST_HOST": "true",
-    "API_URL": "https://sax-music-api.skmyti00.workers.dev"
+    "API_URL": "https://api.saxmusic.work"
   },
   "routes": [
     {
-      "pattern": "admin.saxmusic.site/*",
-      "zone_name": "saxmusic.site"
+      "pattern": "admin.saxmusic.work",
+      "custom_domain": true
     }
   ],
   "observability": {
