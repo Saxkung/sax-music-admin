@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Upload, FolderUp, Plus, Play, Pencil, Save, Eye, EyeOff, Check, Circle, Trash2, Disc3 } from 'lucide-react';
 import { adminFetch } from '@/lib/adminFetcher';
-import { audioTitle, message, type Project, type Category, type Track } from '@/lib/studio';
+import { audioTitle, message, omitUnchangedMedia, type Project, type Category, type Track } from '@/lib/studio';
 import { useAdminUploader } from '@/hooks/useAdminUploader';
 import { ImageUploader } from '@/components/ui/ImageUploader';
 import { Dialog, Loading, Notice, OrderButtons } from './Primitives';
@@ -56,7 +56,7 @@ export default function ProjectEditor({ id }: { id: string }) {
   }, [dirty]);
   async function save(event?: React.FormEvent) {
     event?.preventDefault(); if (!draft) return; setBusy(true); setError('');
-    try { await adminFetch('/projects/' + id, { method: 'PUT', body: JSON.stringify(draft) }); const fresh = (await adminFetch<Project[]>('/projects')).find(item => item.id === id)!; const saved = toDraft(fresh); setProject(fresh); setDraft(saved); setBaseline(JSON.stringify(saved)); setNotice('บันทึกข้อมูลและรูปปกแล้ว'); }
+    try { const payload = omitUnchangedMedia(draft, 'image', project ? project.image || '' : undefined); await adminFetch('/projects/' + id, { method: 'PUT', body: JSON.stringify(payload) }); const fresh = (await adminFetch<Project[]>('/projects')).find(item => item.id === id)!; const saved = toDraft(fresh); setProject(fresh); setDraft(saved); setBaseline(JSON.stringify(saved)); setNotice('บันทึกข้อมูลและรูปปกแล้ว'); }
     catch (cause) { setError(message(cause)); } finally { setBusy(false); }
   }
   async function togglePublish() {
@@ -70,7 +70,7 @@ export default function ProjectEditor({ id }: { id: string }) {
   }
   async function saveTrack(event: React.FormEvent) {
     event.preventDefault(); if (!trackForm) return; setBusy(true); setError('');
-    try { await adminFetch('/tracks' + (trackForm.id ? '/' + trackForm.id : ''), { method: trackForm.id ? 'PUT' : 'POST', body: JSON.stringify({ ...trackForm, project_id: id, ...(trackForm.id ? {} : { display_order: Math.max(-1, ...tracks.map(track => track.display_order)) + 1 }) }) }); await loadTracks(); setTrackForm(null); setNotice('บันทึกเพลงแล้ว'); }
+    try { const current = tracks.find(track => track.id === trackForm.id); const payload = omitUnchangedMedia(trackForm, 'src', current?.src); await adminFetch('/tracks' + (trackForm.id ? '/' + trackForm.id : ''), { method: trackForm.id ? 'PUT' : 'POST', body: JSON.stringify({ ...payload, project_id: id, ...(trackForm.id ? {} : { display_order: Math.max(-1, ...tracks.map(track => track.display_order)) + 1 }) }) }); await loadTracks(); setTrackForm(null); setNotice('บันทึกเพลงแล้ว'); }
     catch (cause) { setError(message(cause)); } finally { setBusy(false); }
   }
   async function deleteTrack(track: Track) {

@@ -1,3 +1,4 @@
+import { omitUnchangedMedia } from '../src/lib/studio.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { forwardAdminRequest } from '../src/lib/proxy.ts';
@@ -42,4 +43,21 @@ test('path traversal and arbitrary backend endpoints are rejected', async () => 
     const response = await forwardAdminRequest(new Request(origin + '/api/admin-proxy/' + path.join('/')), path, { session, token: 'test', apiOrigin: 'https://api.test', upstream: async () => { throw new Error('must not reach backend'); } });
     assert.equal(response.status, 405);
   }
+});
+
+test('metadata edits leave a stored legacy cover unchanged', () => {
+  const draft = { title: 'New title', image: '/covers/existing.jpg' };
+  assert.deepEqual(omitUnchangedMedia(draft, 'image', draft.image), { title: 'New title' });
+  assert.equal(draft.image, '/covers/existing.jpg');
+  const replacement = { ...draft, image: 'https://hls.saxmusic.work/covers/new.jpg', tempImageKey: 'uploads/new.jpg' };
+  assert.deepEqual(omitUnchangedMedia(replacement, 'image', draft.image), replacement);
+  assert.deepEqual(omitUnchangedMedia({ ...draft, tempImageKey: replacement.tempImageKey }, 'image', draft.image), { title: draft.title, tempImageKey: replacement.tempImageKey });
+  assert.deepEqual(omitUnchangedMedia({ ...draft, image: '' }, 'image', draft.image), { title: draft.title, image: '' });
+});
+
+test('metadata edits omit an unchanged track URL, but new and replaced tracks send it', () => {
+  const track = { title: 'New title', src: 'https://hls.saxmusic.work/tracks/existing.mp3' };
+  assert.deepEqual(omitUnchangedMedia(track, 'src', track.src), { title: 'New title' });
+  assert.deepEqual(omitUnchangedMedia(track, 'src', undefined), track);
+  assert.deepEqual(omitUnchangedMedia(track, 'src', 'https://hls.saxmusic.work/tracks/old.mp3'), track);
 });
