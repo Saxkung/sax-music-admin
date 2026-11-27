@@ -5,3 +5,13 @@ export interface UploadResult { url: string; key: string; }
 export const newId = () => crypto.randomUUID().replaceAll('-', '');
 export const message = (error: unknown) => error instanceof Error ? error.message : 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง';
 export const audioTitle = (name: string) => name.replace(/\.[^.]+$/, '').replaceAll('_', ' ').trim();
+
+// Send changed media values only. Legacy values may be valid stored data but
+// should not be revalidated when the user is editing unrelated metadata.
+export function omitUnchangedMedia<T extends object, K extends keyof T>(
+  payload: T, field: K, current: T[K] | undefined,
+): Omit<T, K> & Partial<Pick<T, K>> {
+  const next = { ...payload };
+  if (current !== undefined && next[field] === current) delete next[field];
+  return next;
+}
